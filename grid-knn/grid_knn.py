@@ -32,7 +32,7 @@ class GridKNN:
         self.k = k
         self.n = None  # no dataset yet
         self.box_size = box_size
-        self.grid_hashmap = defaultdict(list)
+        self.grid_hashmap = defaultdict(Box)
 
     def fit(self, data: np.ndarray) -> None:
         """
@@ -60,41 +60,41 @@ class GridKNN:
         """
         Partition the data into a grid and store points in the hashmap.
         """
-        # TODO: get the outermost point (furthest from origin, by euclidean distance)
-        pass
+        # get the outermost point (furthest from origin, by euclidean distance)
+        distances = np.linalg.norm(self.data, axis=1)
+        farthest_point = self.data[np.argmax(distances)]
 
-        # TODO: create boxes partitioning the space up to the furthest point, inclusive
-        pass
+        #  number of partitions per dimension
+        num_boxes = np.ceil(farthest_point / self.box_size).astype(int)
+        grid_range = [np.arange(0, (num_boxes[i] + 1) * self.box_size, self.box_size) for i in range(self.n)]
 
-        # TODO: insert each point into their corresponding box
-        pass
-        
-        raise NotImplementedError
+        # create boxes partitioning the entire space up to the furthest point, inclusive
+        for outer_corner in np.array(np.meshgrid(*grid_range)).T.reshape(-1, self.n):
+            outer_corner_key = tuple(outer_corner)
+            self.grid_hashmap[outer_corner_key] = Box(outer_corner, self.box_size)
+
+    def _compute_outer_corner(self, point: np.ndarray) -> np.ndarray:
+        """
+        Get the outer corner of the box this point is in.
+        """
+        return np.ceil(point / self.box_size) * self.box_size
 
     def _get_box(self, point: np.ndarray) -> Box:
         """
         Get the box containing the given point.
         """
-        # TODO: find the interval the point is within for each dimension
-        box_intervals_containing_point = None
-        box_outer_corner = None
-        # get the index for the grid_hashmap (coords of outermost corner)
-        outer_corner_key = tuple(box_outer_corner)
-        # query the grid map to retrieve the box with this outer corner
+        # get the outer corner of this point's box
+        outer_corner = self._compute_outer_corner(point)
+        outer_corner_key = tuple(outer_corner)
         return self.grid_hashmap[outer_corner_key]
 
     def _get_surrounding_boxes(self, boxes: deque[Box]) -> deque[Box]:
         """
-        Get a queue representing the boxes surrounding this one.
+        Get a queue representing the boxes surrounding the given ones.
         """
-        # TODO: get the indices of surrounding boxes' outer corners
-        pass
-        # TODO: query the grid map for the boxes and return in a deque
-        # (the queue is convenient for BFS expansion in _get_k_nearest_neighbours)
-        pass
         raise NotImplementedError
     
-    def _get_k_nearest_neighbours(self, point: np.ndarray) -> list[np.ndarray]:
+    def _get_k_nearest_neighbours(self, point: np.ndarray) -> np.ndarray:
         """
         Get the k nearest neighbours of this point
         """
@@ -111,7 +111,7 @@ class GridKNN:
             pass
         raise NotImplementedError
 
-    def _mode_class(self, nearest_neighbours: list[np.ndarray]) -> float:
+    def _mode_class(self, nearest_neighbours: np.ndarray) -> float:
         """
         Get the mode classification of the k nearest neighbours.
         """
